@@ -2,6 +2,19 @@
 include 'includes/auth.php';
 include 'db/connection.php';
 
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$inventory_where = '';
+$date_filter = '';
+if ($search !== '') {
+    $search_escaped = $conn->real_escape_string($search);
+    // If the search looks like a date (YYYY-MM-DD), filter by date
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $search_escaped)) {
+        $date_filter = "HAVING sale_date = '$search_escaped'";
+    } else {
+        $inventory_where = "WHERE p.p_name LIKE '%$search_escaped%' OR p.type LIKE '%$search_escaped%' OR p.unit LIKE '%$search_escaped%' OR p.shelf LIKE '%$search_escaped%'";
+    }
+}
+
 // Sales report: total sales per day and best-selling product
 $sales_sql = "
     SELECT 
@@ -15,46 +28,46 @@ $sales_sql = "
     FROM Sell s
     JOIN SellDetail sd ON s.s_id = sd.s_id
     GROUP BY DATE(s.date)
+    $date_filter
     ORDER BY sale_date DESC
     LIMIT 10
 ";
 $sales_result = $conn->query($sales_sql);
 
-// Income & expense report (example: you may need to adjust for your schema)
+// Income & expense report (using PurchaseOrder and PurchaseOrderDetail for expenses)
 $income_expense_sql = "
     SELECT 
         DATE(s.date) as sale_date,
         SUM(sd.total_price) as income,
         IFNULL((
-            SELECT SUM(id.price * id.qty)
-            FROM ImportDetail id
-            JOIN Import i ON id.ip_id = i.ip_id
-            WHERE DATE(i.date) = DATE(s.date)
+            SELECT SUM(pod.price * pod.qty)
+            FROM PurchaseOrder po
+            JOIN PurchaseOrderDetail pod ON po.po_id = pod.po_id
+            WHERE DATE(po.date) = DATE(s.date)
         ), 0) as expense,
         SUM(sd.total_price) - IFNULL((
-            SELECT SUM(id.price * id.qty)
-            FROM ImportDetail id
-            JOIN Import i ON id.ip_id = i.ip_id
-            WHERE DATE(i.date) = DATE(s.date)
+            SELECT SUM(pod.price * pod.qty)
+            FROM PurchaseOrder po
+            JOIN PurchaseOrderDetail pod ON po.po_id = pod.po_id
+            WHERE DATE(po.date) = DATE(s.date)
         ), 0) as profit
     FROM Sell s
     JOIN SellDetail sd ON s.s_id = sd.s_id
     GROUP BY DATE(s.date)
+    $date_filter
     ORDER BY sale_date DESC
     LIMIT 10
 ";
 $income_expense_result = $conn->query($income_expense_sql);
 
-// Inventory report: product and quantity left
+// Inventory report: product and quantity left (using PurchaseOrderDetail for stock-in)
 $inventory_sql = "
     SELECT 
         p.p_name,
-        IFNULL(SUM(id.qty), 0) - IFNULL((
-            SELECT SUM(sd.qty) FROM SellDetail sd WHERE sd.p_id = p.p_id
-        ), 0) AS qty_left
+        IFNULL((SELECT SUM(pod.qty) FROM PurchaseOrderDetail pod WHERE pod.p_id = p.p_id), 0)
+        - IFNULL((SELECT SUM(sd.qty) FROM SellDetail sd WHERE sd.p_id = p.p_id), 0) AS qty_left
     FROM Product p
-    LEFT JOIN ImportDetail id ON p.p_id = id.p_id
-    GROUP BY p.p_id
+    $inventory_where
     ORDER BY qty_left DESC
     LIMIT 10
 ";
@@ -70,13 +83,11 @@ $inventory_result = $conn->query($inventory_sql);
 <body>
     <?php include 'includes/navbar.php'; ?>
     <div class="dashboard-container">
-        <h2 class="dashboard-title">ລາຍງານລາຍວັນ</h2>
-        <form style="display:flex;gap:16px;margin-bottom:18px;">
-            <input type="text" placeholder="ຄົ້ນຫາລາຍງານ...." style="flex:1;padding:10px;border-radius:6px;border:1px solid #ccc;">
+        <h2 class="dashboard-title">ການລາຍງານ</h2>
+        <form style="display:flex;gap:16px;margin-bottom:18px;" method="get">
+            <input type="text" name="search" placeholder="ຄົ້ນຫາລາຍງານ...." value="<?php echo htmlspecialchars($search); ?>" style="flex:1;padding:10px;border-radius:6px;border:1px solid #ccc;">
             <button type="submit" class="dashboard-add-btn" style="width:200px;">ຄົ້ນຫາ</button>
         </form>
-
-        <h3 style="margin-bottom:8px;">ລາຍງານການຂາຍ</h3>
         <table class="dashboard-table">
             <thead>
                 <tr>
@@ -92,7 +103,11 @@ $inventory_result = $conn->query($inventory_sql);
                     <td><?php echo htmlspecialchars($row['sale_date']); ?></td>
                     <td><?php echo htmlspecialchars($row['total_sales']); ?></td>
                     <td><?php echo htmlspecialchars($row['best_product']); ?></td>
-                    <td><button class="dashboard-edit-btn">View</button></td>
+                    <td><button class="dashboard-edit-btn viewProductBtn"
+                        data-date="<?php echo htmlspecialchars($row['sale_date']); ?>"
+                        data-total="<?php echo htmlspecialchars($row['total_sales']); ?>"
+                        data-best="<?php echo htmlspecialchars($row['best_product']); ?>"
+                    >View</button></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
@@ -116,7 +131,12 @@ $inventory_result = $conn->query($inventory_sql);
                     <td><?php echo htmlspecialchars($row['income']); ?>kip</td>
                     <td><?php echo htmlspecialchars($row['expense']); ?>kip</td>
                     <td><?php echo htmlspecialchars($row['profit']); ?>kip</td>
-                    <td><button class="dashboard-edit-btn">View</button></td>
+                    <td><button class="dashboard-edit-btn viewProductBtn"
+                        data-date="<?php echo htmlspecialchars($row['sale_date']); ?>"
+                        data-income="<?php echo htmlspecialchars($row['income']); ?>"
+                        data-expense="<?php echo htmlspecialchars($row['expense']); ?>"
+                        data-profit="<?php echo htmlspecialchars($row['profit']); ?>"
+                    >View</button></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
@@ -136,12 +156,67 @@ $inventory_result = $conn->query($inventory_sql);
                 <tr>
                     <td><?php echo htmlspecialchars($row['p_name']); ?></td>
                     <td><?php echo htmlspecialchars($row['qty_left']); ?></td>
-                    <td><button class="dashboard-edit-btn">View</button></td>
+                    <td><button class="dashboard-edit-btn viewProductBtn"
+                        data-pname="<?php echo htmlspecialchars($row['p_name']); ?>"
+                        data-qtyleft="<?php echo htmlspecialchars($row['qty_left']); ?>"
+                    >View</button></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
     </div>
+    <!-- Product Detail Modal -->
+    <div id="productDetailModal" class="modal">
+      <div class="modal-content">
+        <span class="close" id="closeProductDetailModal">&times;</span>
+        <h3 class="modal-title">ລາຍລະອຽດສິນຄ້າ</h3>
+        <div id="productDetailContent">
+          <!-- Details will be loaded here -->
+        </div>
+      </div>
+    </div>
     <script src="assets/js/scripts.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.viewProductBtn').forEach(function(btn) {
+            btn.onclick = function() {
+                let html = '';
+                if (btn.hasAttribute('data-best')) {
+                    // Sales report
+                    html = `
+                        <p><strong>ວັນທີ:</strong> ${btn.getAttribute('data-date')}</p>
+                        <p><strong>ຍອດຂາຍລວມ:</strong> ${btn.getAttribute('data-total')}</p>
+                        <p><strong>ສິນຄ້າຂາຍດີ:</strong> ${btn.getAttribute('data-best')}</p>
+                    `;
+                } else if (btn.hasAttribute('data-income')) {
+                    // Income/Expense report
+                    html = `
+                        <p><strong>ວັນທີ:</strong> ${btn.getAttribute('data-date')}</p>
+                        <p><strong>ຮັບເງິນ:</strong> ${btn.getAttribute('data-income')}</p>
+                        <p><strong>ຈ່າຍເງິນ:</strong> ${btn.getAttribute('data-expense')}</p>
+                        <p><strong>ກຳໄລ:</strong> ${btn.getAttribute('data-profit')}</p>
+                    `;
+                } else {
+                    // Inventory report (already works)
+                    html = `
+                        <p><strong>ຊື່ສິນຄ້າ:</strong> ${btn.getAttribute('data-pname')}</p>
+                        <p><strong>ຈຳນວນຄົງເຫຼືອ:</strong> ${btn.getAttribute('data-qtyleft')}</p>
+                    `;
+                }
+                document.getElementById('productDetailContent').innerHTML = html;
+                document.getElementById('productDetailModal').style.display = 'block';
+            };
+        });
+        document.getElementById('closeProductDetailModal').onclick = function() {
+            document.getElementById('productDetailModal').style.display = 'none';
+        };
+        window.onclick = function(event) {
+            var modal = document.getElementById('productDetailModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+    });
+    </script>
 </body>
 </html>

@@ -3,12 +3,12 @@ session_start();
 include 'db/connection.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $emp_id = $_POST['emp_id'];
+    $emp_name = $_POST['emp_name'];
     $password = $_POST['password'];
 
-    $sql = "SELECT * FROM Employee WHERE emp_id = ? AND password = ?";
+    $sql = "SELECT * FROM Employee WHERE emp_name = ? AND password = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("is", $emp_id, $password);
+    $stmt->bind_param("ss", $emp_name, $password);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <h1 class="gpg-title">Welcome to GPG Store</h1>
             <h2 class="gpg-login-title">Login</h2>
             <form method="post" action="">
-                <input type="text" name="emp_id" placeholder="Username" class="gpg-input" required><br>
+                <input type="text" name="emp_name" placeholder="Username" class="gpg-input" required><br>
                 <input type="password" name="password" placeholder="Password" class="gpg-input" required><br>
                 <button type="submit" class="gpg-btn">Login</button>
                 <?php if(isset($error)) { echo "<p class='error'>$error</p>"; } ?>

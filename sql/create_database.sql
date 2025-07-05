@@ -1,6 +1,8 @@
-CREATE DATABASE IF NOT EXISTS store_db;
+DROP DATABASE IF EXISTS store_db;
+CREATE DATABASE store_db;
 USE store_db;
 
+-- Customer table
 CREATE TABLE Customer (
     c_id INT AUTO_INCREMENT PRIMARY KEY,
     c_name VARCHAR(255) NOT NULL,
@@ -8,6 +10,7 @@ CREATE TABLE Customer (
     address TEXT
 );
 
+-- Employee table
 CREATE TABLE Employee (
     emp_id INT AUTO_INCREMENT PRIMARY KEY,
     emp_name VARCHAR(255) NOT NULL,
@@ -17,11 +20,7 @@ CREATE TABLE Employee (
     address TEXT
 );
 
--- Default employee for login
-INSERT INTO `employee` (`emp_id`, `emp_name`, `tel`, `password`, `email`, `address`) VALUES
-(1, 'Admin', '123456789', 'password123', 'admin@example.com', '123 Main St');
-
-
+-- Supplier table
 CREATE TABLE Supplier (
     sup_id INT AUTO_INCREMENT PRIMARY KEY,
     sup_name VARCHAR(255) NOT NULL,
@@ -29,96 +28,71 @@ CREATE TABLE Supplier (
     tel VARCHAR(20)
 );
 
-CREATE TABLE `Order` (
-    od_id INT AUTO_INCREMENT PRIMARY KEY,
-    od_name VARCHAR(255),
+-- Product table (type, brand, unit, shelf as columns)
+CREATE TABLE Product (
+    p_id INT AUTO_INCREMENT PRIMARY KEY,
+    p_name VARCHAR(255) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    qty INT DEFAULT 0,
+    unit VARCHAR(50),
+    shelf VARCHAR(100),
+    type VARCHAR(100)
+);
+
+-- Purchase Order (from suppliers)
+CREATE TABLE PurchaseOrder (
+    po_id INT AUTO_INCREMENT PRIMARY KEY,
     sup_id INT,
     emp_id INT,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sup_id) REFERENCES Supplier(sup_id),
     FOREIGN KEY (emp_id) REFERENCES Employee(emp_id)
 );
 
-CREATE TABLE ProductType (
-    pt_id INT AUTO_INCREMENT PRIMARY KEY,
-    pt_name VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE ProductBrand (
-    pb_id INT AUTO_INCREMENT PRIMARY KEY,
-    pb_name VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE ProductShelf (
-    pslf_id INT AUTO_INCREMENT PRIMARY KEY,
-    pslf_location VARCHAR(255)
-);
-
-CREATE TABLE ProductUnit (
-    punit_id INT AUTO_INCREMENT PRIMARY KEY,
-    punit_name VARCHAR(50)
-);
-
-CREATE TABLE Product (
-    p_id INT AUTO_INCREMENT PRIMARY KEY,
-    p_name VARCHAR(255) NOT NULL,
-    price DECIMAL(10, 2),
-    pt_id INT,
-    pb_id INT,
-    pslf_id INT,
-    punit_id INT,
-    FOREIGN KEY (pt_id) REFERENCES ProductType(pt_id),
-    FOREIGN KEY (pb_id) REFERENCES ProductBrand(pb_id),
-    FOREIGN KEY (pslf_id) REFERENCES ProductShelf(pslf_id),
-    FOREIGN KEY (punit_id) REFERENCES ProductUnit(punit_id)
-);
-
-CREATE TABLE OrderDetail (
-    odd_id INT AUTO_INCREMENT PRIMARY KEY,
-    od_id INT,
-    qty INT,
+-- Purchase Order Details
+CREATE TABLE PurchaseOrderDetail (
+    pod_id INT AUTO_INCREMENT PRIMARY KEY,
+    po_id INT,
     p_id INT,
-    FOREIGN KEY (od_id) REFERENCES `Order`(od_id),
+    qty INT,
+    price DECIMAL(10,2),
+    FOREIGN KEY (po_id) REFERENCES PurchaseOrder(po_id),
     FOREIGN KEY (p_id) REFERENCES Product(p_id)
 );
 
+-- Sell (sales to customers)
 CREATE TABLE Sell (
     s_id INT AUTO_INCREMENT PRIMARY KEY,
-    `date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     c_id INT,
-    FOREIGN KEY (c_id) REFERENCES Customer(c_id)
+    emp_id INT,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('unpaid','paid') DEFAULT 'unpaid',
+    FOREIGN KEY (c_id) REFERENCES Customer(c_id),
+    FOREIGN KEY (emp_id) REFERENCES Employee(emp_id)
 );
 
+-- Sell Details
 CREATE TABLE SellDetail (
     sd_id INT AUTO_INCREMENT PRIMARY KEY,
-    total_price DECIMAL(10, 2),
-    qty INT,
-    p_id INT,
     s_id INT,
-    FOREIGN KEY (p_id) REFERENCES Product(p_id),
-    FOREIGN KEY (s_id) REFERENCES Sell(s_id)
-);
-
-CREATE TABLE Payment (
-    pm_id INT AUTO_INCREMENT PRIMARY KEY,
-    qty INT,
-    `date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    s_id INT,
-    FOREIGN KEY (s_id) REFERENCES Sell(s_id)
-);
-
-CREATE TABLE Import (
-    ip_id INT AUTO_INCREMENT PRIMARY KEY,
-    `date` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    od_id INT,
-    FOREIGN KEY (od_id) REFERENCES `Order`(od_id)
-);
-
-CREATE TABLE ImportDetail (
-    ipd_id INT AUTO_INCREMENT PRIMARY KEY,
-    ip_id INT,
     p_id INT,
     qty INT,
-    price DECIMAL(10, 2),
-    FOREIGN KEY (ip_id) REFERENCES Import(ip_id),
+    price DECIMAL(10,2),
+    total_price DECIMAL(10,2),
+    FOREIGN KEY (s_id) REFERENCES Sell(s_id),
     FOREIGN KEY (p_id) REFERENCES Product(p_id)
 );
+
+-- Payment table
+CREATE TABLE Payment (
+    pm_id INT AUTO_INCREMENT PRIMARY KEY,
+    s_id INT,
+    amount DECIMAL(10,2),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('unpaid','paid') DEFAULT 'unpaid',
+    FOREIGN KEY (s_id) REFERENCES Sell(s_id)
+);
+
+-- Default admin employee
+INSERT INTO Employee (emp_name, tel, password, email, address)
+VALUES ('Admin', '123456789', 'password123', 'admin@example.com', '123 Main St');

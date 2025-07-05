@@ -1,12 +1,9 @@
 <?php
 include 'includes/auth.php';
 include 'db/connection.php';
-$sql = "SELECT p.p_id, p.p_name, p.price, pt.pt_name, pb.pb_name, pslf.pslf_location, punit.punit_name 
-        FROM Product p 
-        LEFT JOIN ProductType pt ON p.pt_id = pt.pt_id
-        LEFT JOIN ProductBrand pb ON p.pb_id = pb.pb_id
-        LEFT JOIN ProductShelf pslf ON p.pslf_id = pslf.pslf_id
-        LEFT JOIN ProductUnit punit ON p.punit_id = punit.punit_id";
+
+// Fetch products from the new Product table structure
+$sql = "SELECT p_id, p_name, price, qty, unit, shelf, type FROM Product";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -19,6 +16,29 @@ $result = $conn->query($sql);
 <body>
     <?php include 'includes/navbar.php'; ?>
     <div class="dashboard-container">
+        <?php if (isset($_GET['msg'])): ?>
+            <div class="dashboard-alert" style="margin-bottom:16px;">
+                <?php
+                switch ($_GET['msg']) {
+                    case 'deleted':
+                        echo 'ລົບສິນຄ້າສຳເລັດ!';
+                        break;
+                    case 'has_sales':
+                        echo 'ບໍ່ສາມາດລົບສິນຄ້ານີ້ໄດ້ ເນື່ອງຈາກມີການຂາຍແລ້ວ!';
+                        break;
+                    case 'not_found':
+                        echo 'ບໍ່ພົບສິນຄ້າ!';
+                        break;
+                    case 'delete_error':
+                        echo 'ລົບສິນຄ້າຜິດພາດ!';
+                        break;
+                    case 'missing_id':
+                        echo 'ຂໍ້ມູນສິນຄ້າບໍ່ຖືກຕ້ອງ!';
+                        break;
+                }
+                ?>
+            </div>
+        <?php endif; ?>
         <h2 class="dashboard-title">ຈັດການສິນຄ້າ</h2>
         <button class="dashboard-add-btn" id="openAddProductModal">ເພີ່ມສິນຄ້າໃໝ່</button>
 
@@ -27,20 +47,42 @@ $result = $conn->query($sql);
                 <span class="close" id="closeAddProductModal">&times;</span>
                 <h3 class="modal-title">ເພີ່ມສິນຄ້າໃໝ່</h3>
                 <form action="add_product.php" method="post">
-                    <label>ລະຫັດສິນຄ້າ</label>
-                    <input type="text" name="p_id" required>
                     <label>ຊື່ສິນຄ້າ</label>
                     <input type="text" name="p_name" required>
                     <label>ລາຄາ</label>
                     <input type="number" name="price" required>
                     <label>ຈຳນວນ</label>
-                    <input type="number" name="quantity" required>
+                    <input type="number" name="qty" required>
                     <label>ຫົວໜ່ວຍ</label>
-                    <input type="text" name="punit_name" required>
+                    <input type="text" name="unit">
                     <label>ຊັ້ນວາງ</label>
-                    <input type="text" name="pslf_location" required>
+                    <input type="text" name="shelf">
                     <label>ປະເພດ</label>
-                    <input type="text" name="pt_name" required>
+                    <input type="text" name="type">
+                    <button type="submit" class="dashboard-edit-btn" style="width:100%;">ບັນທຶກ</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Product Modal -->
+        <div id="editProductModal" class="modal">
+            <div class="modal-content">
+                <span class="close" id="closeEditProductModal">&times;</span>
+                <h3 class="modal-title">ແກ້ໄຂສິນຄ້າ</h3>
+                <form id="editProductForm" method="post">
+                    <input type="hidden" name="p_id" id="edit_p_id">
+                    <label>ຊື່ສິນຄ້າ</label>
+                    <input type="text" name="p_name" id="edit_p_name" required>
+                    <label>ລາຄາ</label>
+                    <input type="number" name="price" id="edit_price" required>
+                    <label>ຈຳນວນ</label>
+                    <input type="number" name="qty" id="edit_qty" required>
+                    <label>ຫົວໜ່ວຍ</label>
+                    <input type="text" name="unit" id="edit_unit">
+                    <label>ຊັ້ນວາງ</label>
+                    <input type="text" name="shelf" id="edit_shelf">
+                    <label>ປະເພດ</label>
+                    <input type="text" name="type" id="edit_type">
                     <button type="submit" class="dashboard-edit-btn" style="width:100%;">ບັນທຶກ</button>
                 </form>
             </div>
@@ -62,16 +104,24 @@ $result = $conn->query($sql);
             <tbody>
                 <?php while($row = $result->fetch_assoc()): ?>
                 <tr>
-                    <td><?php echo $row['p_id']; ?></td>
-                    <td><?php echo $row['p_name']; ?></td>
-                    <td><?php echo $row['price']; ?>kip</td>
-                    <td>100</td>
-                    <td><?php echo $row['punit_name']; ?></td>
-                    <td><?php echo $row['pslf_location']; ?></td>
-                    <td><?php echo $row['pt_name']; ?></td>
+                    <td><?php echo htmlspecialchars($row['p_id']); ?></td>
+                    <td><?php echo htmlspecialchars($row['p_name']); ?></td>
+                    <td><?php echo htmlspecialchars($row['price']); ?>kip</td>
+                    <td><?php echo htmlspecialchars($row['qty']); ?></td>
+                    <td><?php echo htmlspecialchars($row['unit']); ?></td>
+                    <td><?php echo htmlspecialchars($row['shelf']); ?></td>
+                    <td><?php echo htmlspecialchars($row['type']); ?></td>
                     <td>
-                        <button class="dashboard-edit-btn">ແກ້ໄຂ</button>
-                        <button class="dashboard-delete-btn">ລົບ</button>
+                        <button type="button" class="dashboard-edit-btn openEditProductModal"
+                            data-pid="<?php echo htmlspecialchars($row['p_id']); ?>"
+                            data-pname="<?php echo htmlspecialchars($row['p_name']); ?>"
+                            data-price="<?php echo htmlspecialchars($row['price']); ?>"
+                            data-qty="<?php echo htmlspecialchars($row['qty']); ?>"
+                            data-unit="<?php echo htmlspecialchars($row['unit']); ?>"
+                            data-shelf="<?php echo htmlspecialchars($row['shelf']); ?>"
+                            data-type="<?php echo htmlspecialchars($row['type']); ?>"
+                        >ແກ້ໄຂ</button>
+                        <a href="delete_product.php?id=<?php echo urlencode($row['p_id']); ?>" class="dashboard-delete-btn" onclick="return confirm('ຢືນຢັນການລົບ?');">ລົບ</a>
                     </td>
                 </tr>
                 <?php endwhile; ?>
@@ -79,5 +129,54 @@ $result = $conn->query($sql);
         </table>
     </div>
     <script src="assets/js/scripts.js"></script>
+    <script>
+document.getElementById('openAddProductModal').onclick = function() {
+    document.getElementById('addProductModal').style.display = 'block';
+};
+document.getElementById('closeAddProductModal').onclick = function() {
+    document.getElementById('addProductModal').style.display = 'none';
+};
+// Optional: close modal when clicking outside
+window.onclick = function(event) {
+    var modal = document.getElementById('addProductModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+};
+
+// Edit Product Modal logic
+var editModal = document.getElementById('editProductModal');
+var closeEditBtn = document.getElementById('closeEditProductModal');
+var editForm = document.getElementById('editProductForm');
+
+// Open modal and fill fields
+Array.from(document.getElementsByClassName('openEditProductModal')).forEach(function(btn) {
+    btn.onclick = function() {
+        document.getElementById('edit_p_id').value = btn.getAttribute('data-pid');
+        document.getElementById('edit_p_name').value = btn.getAttribute('data-pname');
+        document.getElementById('edit_price').value = btn.getAttribute('data-price');
+        document.getElementById('edit_qty').value = btn.getAttribute('data-qty');
+        document.getElementById('edit_unit').value = btn.getAttribute('data-unit');
+        document.getElementById('edit_shelf').value = btn.getAttribute('data-shelf');
+        document.getElementById('edit_type').value = btn.getAttribute('data-type');
+        editModal.style.display = 'block';
+    };
+});
+closeEditBtn.onclick = function() {
+    editModal.style.display = 'none';
+};
+window.onclick = function(event) {
+    if (event.target == editModal) {
+        editModal.style.display = 'none';
+    }
+};
+// Submit form
+editForm.onsubmit = function(e) {
+    e.preventDefault();
+    var pid = document.getElementById('edit_p_id').value;
+    editForm.action = 'edit_product.php?id=' + encodeURIComponent(pid);
+    editForm.submit();
+};
+</script>
 </body>
 </html>
