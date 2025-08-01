@@ -40,8 +40,7 @@ try {
             JOIN Product p ON p.p_id = pod.p_id
             ORDER BY pod.pod_id DESC";
     $imports = $conn->query($sql)->fetch_all(MYSQLI_ASSOC);
-    echo json_encode(['success'=>true, 'imports'=>$imports], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => true, 'imports' => $imports], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
-    echo json_encode(['success'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }
-?>

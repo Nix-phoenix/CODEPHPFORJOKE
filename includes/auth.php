@@ -3,7 +3,7 @@ session_start();
 
 function requireLogin() {
     if (!isset($_SESSION['emp_id'])) {
-        header("Location: login.php");
+        header("Location: register.php");
         exit;
     }
 }

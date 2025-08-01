@@ -32,14 +32,15 @@ CREATE TABLE Supplier (
 );
 
 -- Product table (type, brand, unit, shelf as columns)
-CREATE TABLE Product (
+CREATE TABLE product (
     p_id INT AUTO_INCREMENT PRIMARY KEY,
     p_name VARCHAR(255) NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
     qty INT DEFAULT 0,
     unit VARCHAR(50),
     shelf VARCHAR(100),
-    type VARCHAR(100)
+    type VARCHAR(100),
+    image_path VARCHAR(255) -- New column to store the image file path
 );
 
 -- Purchase Order (from suppliers)
