@@ -41,12 +41,14 @@ $import_result = $conn->query($import_sql);
 <body>
     <?php include 'includes/navbar.php'; ?>
     <div class="dashboard-container">
-        <h2 class="dashboard-title">ຄັງສິນຄ້າ & ການນຳເຂົ້າ</h2>
+        <h2 class="dashboard-title">ຄັ່ງສິນຄ້າ & ການນຳເຂົ້າ</h2>
         <form style="display:flex;gap:16px;margin-bottom:18px;" method="get">
             <input type="text" name="search" placeholder="ຄົ້ນຫາສິນຄ້າ..." value="<?php echo htmlspecialchars($search); ?>" style="flex:1;padding:10px;border-radius:6px;border:1px solid #ccc;">
             <button type="submit" class="dashboard-add-btn" style="width:200px;">ຄົ້ນຫາ</button>
         </form>
-        <h3 class="dashboard-section-title" style="margin:18px 0 8px 0;">ຄັງສິນຄ້າ</h3>
+        <h3 class="dashboard-section-title" style="margin:18px 0 8px 0;">ຄັ່ງສິນຄ້າ</h3>
+        <button type="button" class="dashboard-add-btn" id="openAddProductModalBtn" style="margin-bottom: 10px; width: 200px;">ເພີ່ມສິນຄ້າໃໝ່</button>
+
         <table class="dashboard-table">
             <thead>
                 <tr>
@@ -87,6 +89,8 @@ $import_result = $conn->query($import_sql);
         </table>
 
         <h3 class="dashboard-section-title" style="margin:18px 0 8px 0;">ການນຳເຂົ້າສິນຄ້າເຂົ້າ</h3>
+        <button type="button" class="dashboard-add-btn" id="openAddImportModalBtn" style="margin: 18px 0 10px 0; width: 200px;">ເພີ່ມການນຳເຂົ້າໃໝ່</button>
+
         <table class="dashboard-table">
             <thead>
                 <tr>
@@ -173,6 +177,52 @@ $import_result = $conn->query($import_sql);
             </form>
         </div>
     </div>
+    <!-- Add Product Modal -->
+    <div id="addProductModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" id="closeAddProductModal">&times;</span>
+            <h3 class="modal-title">ເພີ່ມສິນຄ້າໃໝ່</h3>
+            <form id="addProductForm" method="post" action="add_product.php">
+                <label>ຊື່ສິນຄ້າ</label>
+                <input type="text" name="p_name" required>
+                <label>ລາຄາ</label>
+                <input type="number" name="price" required>
+                <label>ຈຳນວນ</label>
+                <input type="number" name="qty" required>
+                <label>ຫົວໜ່ວຍ</label>
+                <input type="text" name="unit">
+                <label>ຊັ້ນວາງ</label>
+                <input type="text" name="shelf">
+                <label>ປະເພດ</label>
+                <input type="text" name="type">
+                <button type="submit" class="dashboard-add-btn" style="width:100%;">ບັນທຶກ</button>
+            </form>
+        </div>
+    </div>
+    <!-- Add Import Modal -->
+    <div id="addImportModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" id="closeAddImportModal">&times;</span>
+            <h3 class="modal-title">ເພີ່ມການນຳເຂົ້າໃໝ່</h3>
+            <form id="addImportForm" method="post" action="add_import.php">
+                <label>ຊື່ສິນຄ້າ</label>
+                <input type="text" name="p_name" required>
+                <label>ຜູ້ຈັດຫາ</label>
+                <input type="text" name="sup_name" required>
+                <label>ເບີໂທ</label>
+                <input type="text" name="tel">
+                <label>ທີ່ຢູ່</label>
+                <input type="text" name="address">
+                <label>ຈຳນວນນຳເຂົ້າ</label>
+                <input type="number" name="import_qty" required>
+                <label>ລາຄານຳເຂົ້າ</label>
+                <input type="number" name="import_price" required>
+                <label>ວັນທີນຳເຂົ້າ</label>
+                <input type="date" name="import_date" required>
+                <button type="submit" class="dashboard-add-btn" style="width:100%;">ບັນທຶກ</button>
+            </form>
+        </div>
+    </div>
     <script src="assets/js/scripts.js"></script>
     <script>
     // Edit Product Modal logic
@@ -238,6 +288,36 @@ $import_result = $conn->query($import_sql);
         var poid = document.getElementById('edit_po_id').value;
         importForm.action = 'edit_import.php?po_id=' + encodeURIComponent(poid);
         importForm.submit();
+    };
+    // Add Product Modal logic
+    var addProductModal = document.getElementById('addProductModal');
+    var openAddProductModalBtn = document.getElementById('openAddProductModalBtn');
+    var closeAddProductModalBtn = document.getElementById('closeAddProductModal');
+    openAddProductModalBtn.onclick = function() {
+        addProductModal.style.display = 'block';
+    };
+    closeAddProductModalBtn.onclick = function() {
+        addProductModal.style.display = 'none';
+    };
+    window.onclick = function(event) {
+        if (event.target == addProductModal) {
+            addProductModal.style.display = 'none';
+        }
+    };
+    // Add Import Modal logic
+    var addImportModal = document.getElementById('addImportModal');
+    var openAddImportModalBtn = document.getElementById('openAddImportModalBtn');
+    var closeAddImportModalBtn = document.getElementById('closeAddImportModal');
+    openAddImportModalBtn.onclick = function() {
+        addImportModal.style.display = 'block';
+    };
+    closeAddImportModalBtn.onclick = function() {
+        addImportModal.style.display = 'none';
+    };
+    window.onclick = function(event) {
+        if (event.target == addImportModal) {
+            addImportModal.style.display = 'none';
+        }
     };
     </script>
 </body>

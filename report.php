@@ -60,12 +60,11 @@ $income_expense_sql = "
 ";
 $income_expense_result = $conn->query($income_expense_sql);
 
-// Inventory report: product and quantity left (using PurchaseOrderDetail for stock-in)
+// Inventory report: product and quantity left (using Product.qty as the source of truth)
 $inventory_sql = "
     SELECT 
         p.p_name,
-        IFNULL((SELECT SUM(pod.qty) FROM PurchaseOrderDetail pod WHERE pod.p_id = p.p_id), 0)
-        - IFNULL((SELECT SUM(sd.qty) FROM SellDetail sd WHERE sd.p_id = p.p_id), 0) AS qty_left
+        p.qty AS qty_left
     FROM Product p
     $inventory_where
     ORDER BY qty_left DESC
@@ -84,11 +83,13 @@ $inventory_result = $conn->query($inventory_sql);
     <?php include 'includes/navbar.php'; ?>
     <div class="dashboard-container">
         <h2 class="dashboard-title">ການລາຍງານ</h2>
+        <button class="dashboard-add-btn" id="printReportBtn" style="margin-bottom: 18px; width: 200px;">ພິມລາຍງານ</button>
         <form style="display:flex;gap:16px;margin-bottom:18px;" method="get">
             <input type="text" name="search" placeholder="ຄົ້ນຫາລາຍງານ...." value="<?php echo htmlspecialchars($search); ?>" style="flex:1;padding:10px;border-radius:6px;border:1px solid #ccc;">
             <button type="submit" class="dashboard-add-btn" style="width:200px;">ຄົ້ນຫາ</button>
         </form>
-        <table class="dashboard-table">
+        <h3 class="report-section-title" style="margin:18px 0 8px 0;">ລາຍງານການຂາຍ</h3>
+        <table class="dashboard-table report-table" id="sales-table">
             <thead>
                 <tr>
                     <th>ວັນທີ</th>
@@ -113,8 +114,8 @@ $inventory_result = $conn->query($inventory_sql);
             </tbody>
         </table>
 
-        <h3 style="margin:18px 0 8px 0;">ລາຍງານຮັບເງິນ & ຈ່າຍເງິນ</h3>
-        <table class="dashboard-table">
+        <h3 class="report-section-title" style="margin:18px 0 8px 0;">ລາຍງານຮັບເງິນ & ຈ່າຍເງິນ</h3>
+        <table class="dashboard-table report-table" id="income-table">
             <thead>
                 <tr>
                     <th>ວັນທີ</th>
@@ -142,8 +143,8 @@ $inventory_result = $conn->query($inventory_sql);
             </tbody>
         </table>
 
-        <h3 style="margin:18px 0 8px 0;">ລາຍງານຄົງສິນຄ້າ</h3>
-        <table class="dashboard-table">
+        <h3 class="report-section-title" style="margin:18px 0 8px 0;">ລາຍງານຄັ່ງສິນຄ້າ</h3>
+        <table class="dashboard-table report-table" id="inventory-table">
             <thead>
                 <tr>
                     <th>ຊື່ສິນຄໍາ</th>
@@ -216,7 +217,53 @@ $inventory_result = $conn->query($inventory_sql);
                 modal.style.display = 'none';
             }
         };
+        // Print button: just print the page
+        document.getElementById('printReportBtn').onclick = function() {
+            window.print();
+        };
     });
     </script>
+    <style>
+    @media print {
+        nav, .gpg-navbar, .gpg-header, .dashboard-add-btn, .dashboard-edit-btn, .dashboard-delete-btn, .modal, .modal-content, .close, form, button, input[type="button"], input[type="submit"], a.button, .viewProductBtn {
+            display: none !important;
+        }
+        #productDetailModal, #closeProductDetailModal, #productDetailContent {
+            display: none !important;
+        }
+        .dashboard-table, .dashboard-table th, .dashboard-table td {
+            border: 1px solid #333 !important;
+            color: #000 !important;
+            background: #fff !important;
+        }
+        .dashboard-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+        .dashboard-table th, .dashboard-table td {
+            padding: 6px 10px !important;
+            text-align: left !important;
+            vertical-align: middle !important;
+        }
+        .dashboard-table th {
+            background: #f2f2f2 !important;
+            font-weight: bold !important;
+        }
+        .report-section-title {
+            margin-top: 24px !important;
+            margin-bottom: 8px !important;
+            color: #000 !important;
+            page-break-after: avoid !important;
+        }
+        .dashboard-title {
+            text-align: center !important;
+        }
+        @page {
+            margin: 16mm 10mm 16mm 10mm;
+        }
+    }
+    </style>
 </body>
 </html>

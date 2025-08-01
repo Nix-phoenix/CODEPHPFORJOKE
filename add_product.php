@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bind_param("sdisss", $p_name, $price, $qty, $unit, $shelf, $type);
     $stmt->execute();
 
-    header("Location: storage.php");
+    header("Location: warehouse.php");
     exit;
 }
 ?>

@@ -1,5 +1,7 @@
 DROP DATABASE IF EXISTS store_db;
+
 CREATE DATABASE store_db;
+
 USE store_db;
 
 -- Customer table
@@ -17,7 +19,8 @@ CREATE TABLE Employee (
     tel VARCHAR(20),
     password VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE,
-    address TEXT
+    address TEXT,
+    role ENUM('admin', 'employee') NOT NULL DEFAULT 'employee'
 );
 
 -- Supplier table
@@ -32,7 +35,7 @@ CREATE TABLE Supplier (
 CREATE TABLE Product (
     p_id INT AUTO_INCREMENT PRIMARY KEY,
     p_name VARCHAR(255) NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
     qty INT DEFAULT 0,
     unit VARCHAR(50),
     shelf VARCHAR(100),
@@ -45,8 +48,8 @@ CREATE TABLE PurchaseOrder (
     sup_id INT,
     emp_id INT,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sup_id) REFERENCES Supplier(sup_id),
-    FOREIGN KEY (emp_id) REFERENCES Employee(emp_id)
+    FOREIGN KEY (sup_id) REFERENCES Supplier (sup_id),
+    FOREIGN KEY (emp_id) REFERENCES Employee (emp_id)
 );
 
 -- Purchase Order Details
@@ -55,9 +58,9 @@ CREATE TABLE PurchaseOrderDetail (
     po_id INT,
     p_id INT,
     qty INT,
-    price DECIMAL(10,2),
-    FOREIGN KEY (po_id) REFERENCES PurchaseOrder(po_id),
-    FOREIGN KEY (p_id) REFERENCES Product(p_id)
+    price DECIMAL(10, 2),
+    FOREIGN KEY (po_id) REFERENCES PurchaseOrder (po_id),
+    FOREIGN KEY (p_id) REFERENCES Product (p_id)
 );
 
 -- Sell (sales to customers)
@@ -66,9 +69,9 @@ CREATE TABLE Sell (
     c_id INT,
     emp_id INT,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('unpaid','paid') DEFAULT 'unpaid',
-    FOREIGN KEY (c_id) REFERENCES Customer(c_id),
-    FOREIGN KEY (emp_id) REFERENCES Employee(emp_id)
+    status ENUM('unpaid', 'paid') DEFAULT 'unpaid',
+    FOREIGN KEY (c_id) REFERENCES Customer (c_id),
+    FOREIGN KEY (emp_id) REFERENCES Employee (emp_id)
 );
 
 -- Sell Details
@@ -77,22 +80,80 @@ CREATE TABLE SellDetail (
     s_id INT,
     p_id INT,
     qty INT,
-    price DECIMAL(10,2),
-    total_price DECIMAL(10,2),
-    FOREIGN KEY (s_id) REFERENCES Sell(s_id),
-    FOREIGN KEY (p_id) REFERENCES Product(p_id)
+    price DECIMAL(10, 2),
+    total_price DECIMAL(10, 2),
+    FOREIGN KEY (s_id) REFERENCES Sell (s_id),
+    FOREIGN KEY (p_id) REFERENCES Product (p_id)
 );
 
 -- Payment table
 CREATE TABLE Payment (
     pm_id INT AUTO_INCREMENT PRIMARY KEY,
     s_id INT,
-    amount DECIMAL(10,2),
+    amount DECIMAL(10, 2),
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('unpaid','paid') DEFAULT 'unpaid',
-    FOREIGN KEY (s_id) REFERENCES Sell(s_id)
+    status ENUM('unpaid', 'paid') DEFAULT 'unpaid',
+    FOREIGN KEY (s_id) REFERENCES Sell (s_id)
+);
+-- Product Type
+CREATE TABLE ProductType (
+    pt_id INT AUTO_INCREMENT PRIMARY KEY,
+    pt_name VARCHAR(255) NOT NULL
 );
 
--- Default admin employee
-INSERT INTO Employee (emp_name, tel, password, email, address)
-VALUES ('Admin', '123456789', 'password123', 'admin@example.com', '123 Main St');
+-- Product Brand
+CREATE TABLE ProductBrand (
+    pb_id INT AUTO_INCREMENT PRIMARY KEY,
+    pb_name VARCHAR(255) NOT NULL
+);
+
+-- Product Shelf
+CREATE TABLE ProductShelf (
+    pslf_id INT AUTO_INCREMENT PRIMARY KEY,
+    pslf_location VARCHAR(255) NOT NULL
+);
+
+-- Product Unit
+CREATE TABLE ProductUnit (
+    punit_id INT AUTO_INCREMENT PRIMARY KEY,
+    punit_name VARCHAR(100) NOT NULL
+);
+
+-- Default admin and employee
+INSERT INTO
+    Employee (
+        emp_name,
+        tel,
+        password,
+        email,
+        address,
+        role
+    )
+VALUES (
+        'Admin',
+        '123456789',
+        'password123',
+        'admin@example.com',
+        '123 Main St',
+        'admin'
+    );
+
+INSERT INTO
+    Employee (
+        emp_name,
+        tel,
+        password,
+        email,
+        address,
+        role
+    )
+VALUES (
+        'Employee',
+        '123456789',
+        'password123',
+        'employee@example.com', -- ← You missed this comma
+        '456 Elm St',
+        'employee'
+    );
+
+ALTER TABLE Product ADD COLUMN category VARCHAR(100);

@@ -2,6 +2,7 @@
 include 'includes/auth.php';
 include 'db/connection.php';
 
+
 // Fetch products from the new Product table structure
 $sql = "SELECT p_id, p_name, price, qty, unit, shelf, type FROM Product";
 $result = $conn->query($sql);

@@ -42,6 +42,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $qty = intval($_POST['qty']);
     $price = floatval($_POST['price']);
     $status = $_POST['status'];
+    $payment_date = isset($_POST['payment_date']) ? $_POST['payment_date'] : null;
+
+    // Get the old product and quantity
+    $old = $conn->query("SELECT p_id, qty FROM SellDetail WHERE s_id = $order_id")->fetch_assoc();
+    $old_p_id = $old['p_id'];
+    $old_qty = $old['qty'];
+
+    // Undo the old order
+    $stmt = $conn->prepare("UPDATE Product SET qty = qty + ? WHERE p_id = ?");
+    $stmt->bind_param("ii", $old_qty, $old_p_id);
+    $stmt->execute();
+    $stmt->close();
+
+    // Apply the new order
+    $stmt = $conn->prepare("UPDATE Product SET qty = qty - ? WHERE p_id = ?");
+    $stmt->bind_param("ii", $qty, $p_id);
+    $stmt->execute();
+    $stmt->close();
 
     // Update Sell
     $update = $conn->prepare("UPDATE Sell SET c_id=?, status=? WHERE s_id=?");
@@ -57,11 +75,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update or insert Payment
     $exists = $conn->query("SELECT pm_id FROM Payment WHERE s_id = $order_id")->fetch_assoc();
     if ($exists) {
-        $stmt = $conn->prepare("UPDATE Payment SET status=? WHERE s_id=?");
-        $stmt->bind_param('si', $status, $order_id);
+        if ($payment_date) {
+            $stmt = $conn->prepare("UPDATE Payment SET status=?, date=? WHERE s_id=?");
+            $stmt->bind_param('ssi', $status, $payment_date, $order_id);
+        } else {
+            $stmt = $conn->prepare("UPDATE Payment SET status=? WHERE s_id=?");
+            $stmt->bind_param('si', $status, $order_id);
+        }
     } else {
-        $stmt = $conn->prepare("INSERT INTO Payment (s_id, status) VALUES (?, ?)");
-        $stmt->bind_param('is', $order_id, $status);
+        if ($payment_date) {
+            $stmt = $conn->prepare("INSERT INTO Payment (s_id, status, date) VALUES (?, ?, ?)");
+            $stmt->bind_param('iss', $order_id, $status, $payment_date);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO Payment (s_id, status) VALUES (?, ?)");
+            $stmt->bind_param('is', $order_id, $status);
+        }
     }
     $stmt->execute();
 
