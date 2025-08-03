@@ -52,6 +52,7 @@
                     <a href="subproduct_report.php">ລາຍງານໃບບິນນໍາເຂົ້າສິນຄ້າ</a>
                 </div>
             </li>
+            <li style="float:right"><a href="register.php">ເພີ່ມຜູ້ໃຊ້</a></li>
             <li style="float:right"><a href="logout.php">Logout</a></li>
         </ul>
     </nav>
