@@ -5,17 +5,18 @@ require_once 'db/connection.php';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $like_search = "%$search%";
 
-// Fetch sales data join with payment to get the status.
-$sql = "SELECT 
+// Fetch sales data joined with payment.
+$sql = "SELECT
             s.s_id,
             c.c_name,
+            sd.p_id,
             p.p_name,
             p.type as p_type,
             sd.qty,
             sd.price,
             sd.total_price,
             pm.pm_id,
-            pm.status AS payment_status
+            pm.customer_paid -- Using the customer_paid column from the database
         FROM Sell s
         JOIN SellDetail sd ON s.s_id = sd.s_id
         JOIN Product p ON sd.p_id = p.p_id
@@ -61,6 +62,14 @@ function laoNumberFormat($value) {
         .data-table tbody td { padding: 10px; border-bottom: 1px solid #e0e0e0; text-align: center; }
         .data-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
         .data-table td.text-left { text-align: left; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); padding-top: 60px; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; position: relative; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+        .modal-title { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+        .gpg-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .dashboard-add-btn { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        .dashboard-add-btn:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
@@ -85,7 +94,7 @@ function laoNumberFormat($value) {
                     <th>ຈຳນວນ</th>
                     <th>ລາຄາຕໍ່ໜ່ວຍ</th>
                     <th>ລາຄາລວມ</th>
-                    <th>ສະຖານະ</th>
+                    <th>ຈຳນວນເງິນລູກຄ້າຈ່າຍ</th>
                     <th>ຈັດການ</th>
                 </tr>
             </thead>
@@ -100,13 +109,13 @@ function laoNumberFormat($value) {
                             <td><?php echo htmlspecialchars($row['qty']); ?></td>
                             <td><?php echo laoNumberFormat($row['price']); ?></td>
                             <td><?php echo laoNumberFormat($row['total_price']); ?></td>
+                            <td><?php echo laoNumberFormat($row['customer_paid'] ?? 0); ?></td>
                             <td>
-                                <span style="font-weight:bold; color:<?php echo $row['payment_status'] === 'paid' ? 'green' : 'red'; ?>">
-                                    <?php echo $row['payment_status'] === 'paid' ? 'ຈ່າຍແລ້ວ' : 'ຄ້າງຊຳລະ'; ?>
-                                </span>
-                            </td>
-                            <td>
-                                <a href="payment_api.php?action=toggle_status&sid=<?php echo $row['s_id']; ?>" class="btn btn-green">ແກ້ໄຂ</a>
+                                <button onclick="openEditPaymentModal(this)"
+                                        data-sid="<?php echo htmlspecialchars($row['s_id']); ?>"
+                                        data-customer-paid="<?php echo htmlspecialchars($row['customer_paid'] ?? 0); ?>"
+                                        class="btn btn-green"
+                                        style="margin-bottom: 5px;">ແກ້ໄຂ</button>
                                 <a href="payment_api.php?action=delete_sale&sid=<?php echo $row['s_id']; ?>" onclick="return confirm('ການລົບລາຍການຂາຍນີ້ຈະລົບການຈ່າຍເງິນທີ່ກ່ຽວຂ້ອງນຳ. ດຳເນີນການຕໍ່?')" class="btn btn-red">ລົບ</a>
                             </td>
                         </tr>
@@ -117,5 +126,43 @@ function laoNumberFormat($value) {
             </tbody>
         </table>
     </div>
+
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('paymentModal')">&times;</span>
+            <h3 class="modal-title" id="paymentModalTitle">ແກ້ໄຂຈຳນວນເງິນທີ່ຊຳລະ</h3>
+            <form id="paymentForm" action="payment_api.php" method="post">
+                <input type="hidden" id="saleId" name="sid">
+                <input type="hidden" name="action" value="update_customer_paid">
+
+                <label for="customerPaid">ຈຳນວນເງິນລູກຄ້າຈ່າຍ:</label>
+                <input type="number" id="customerPaid" name="customerPaid" class="gpg-input" required>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="submit" class="dashboard-add-btn">ບັນທຶກ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditPaymentModal(btn) {
+            document.getElementById('paymentModalTitle').textContent = 'ແກ້ໄຂຈຳນວນເງິນທີ່ຊຳລະ';
+            document.getElementById('saleId').value = btn.dataset.sid;
+            document.getElementById('customerPaid').value = btn.dataset.customerPaid;
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        window.onclick = function(e) {
+            const paymentModal = document.getElementById('paymentModal');
+            if (e.target === paymentModal) {
+                closeModal('paymentModal');
+            }
+        };
+    </script>
 </body>
 </html>

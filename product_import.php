@@ -1,8 +1,7 @@
 <?php
 include 'includes/auth.php';
 include 'db/connection.php';
-requireLogin();
-requireRole('admin');
+
 
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 

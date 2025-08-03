@@ -93,9 +93,10 @@ CREATE TABLE Payment (
     s_id INT,
     amount DECIMAL(10, 2),
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('unpaid', 'paid') DEFAULT 'unpaid',
-    FOREIGN KEY (s_id) REFERENCES Sell (s_id)
+    customer_paid DECIMAL(10, 2),
 );
+
+
 -- Product Type
 CREATE TABLE ProductType (
     pt_id INT AUTO_INCREMENT PRIMARY KEY,
