@@ -3,66 +3,96 @@ mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 include 'includes/auth.php';
 include 'db/connection.php';
 
-header('Content-Type: application/json; charset=UTF-8');
-$data = json_decode(file_get_contents('php://input'), true);
-$action = $data['action'] ?? '';
+header('Content-Type: application/json; charset=utf-8'); // Important: Set the correct Content-Type
 
-try {
+$response = ['success' => false, 'error' => 'Invalid action'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? null; // Use $_POST to retrieve data
+
     switch ($action) {
         case 'add':
-            // add PurchaseOrder and detail
-            $conn->begin_transaction();
-            $stmt = $conn->prepare("INSERT INTO PurchaseOrder (sup_id, emp_id, date) VALUES (?,?,?)");
-            $stmt->bind_param('iis', $data['sup_id'], $data['emp_id'], $data['date']);
-            $stmt->execute();
-            $po_id = $stmt->insert_id;
-            $stmt->close();
-
-            $stmt = $conn->prepare("INSERT INTO PurchaseOrderDetail (po_id, p_id, qty, price) VALUES (?,?,?,?)");
-            $stmt->bind_param('iiid', $po_id, $data['p_id'], $data['qty'], $data['unitPrice']);
-            $stmt->execute();
-            $stmt->close();
-            $conn->commit();
-            break;
-
         case 'edit':
-            $conn->begin_transaction();
-            // update PurchaseOrder
-            $stmt = $conn->prepare("UPDATE PurchaseOrder SET sup_id=?, emp_id=?, date=? WHERE po_id=?");
-            $stmt->bind_param('iisi', $data['sup_id'], $data['emp_id'], $data['date'], $data['id']);
-            $stmt->execute();
-            $stmt->close();
-            // update details (assume single detail row per order)
-            $stmt = $conn->prepare("UPDATE PurchaseOrderDetail SET p_id=?, qty=?, price=? WHERE po_id=?");
-            $stmt->bind_param('iidi', $data['p_id'], $data['qty'], $data['unitPrice'], $data['id']);
-            $stmt->execute();
-            $stmt->close();
-            $conn->commit();
+            $sup_id = intval($_POST['supplierId']); // Use $_POST and correct field names
+            $emp_id = intval($_POST['employeeId']);
+            $p_id = intval($_POST['productId']);
+            $qty = intval($_POST['orderQty']);
+            $date = $_POST['orderDate'];
+            $unitPrice = floatval($_POST['unitPrice']);
+
+            if ($action === 'add') {
+                $sql = "INSERT INTO PurchaseOrder (sup_id, emp_id, date) VALUES (?, ?, ?)";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('iis', $sup_id, $emp_id, $date);
+                if ($stmt->execute()) {
+                    $po_id = $conn->insert_id;
+                    $sql2 = "INSERT INTO PurchaseOrderDetail (po_id, p_id, qty, price) VALUES (?, ?, ?, ?)";
+                    $stmt2 = $conn->prepare($sql2);
+                    $stmt2->bind_param('iiid', $po_id, $p_id, $qty, $unitPrice);
+                    if ($stmt2->execute()) {
+                        $response['success'] = true;
+                        $response['message'] = 'Order added successfully';
+                    } else {
+                        $response['error'] = 'Failed to add order detail: ' . $stmt2->error;
+                    }
+                } else {
+                    $response['error'] = 'Failed to add order: ' . $stmt->error;
+                }
+            } else {
+                $id = intval($_POST['orderId']); // Use $_POST and correct field name
+                $sql = "UPDATE PurchaseOrder SET sup_id = ?, emp_id = ?, date = ? WHERE po_id = ?";
+                $stmt = $conn->prepare($sql);
+                $stmt->bind_param('iisi', $sup_id, $emp_id, $date, $id);
+                if ($stmt->execute()) {
+                    $sql2 = "UPDATE PurchaseOrderDetail SET p_id = ?, qty = ?, price = ? WHERE po_id = ?";
+                    $stmt2 = $conn->prepare($sql2);
+                    $stmt2->bind_param('iidi', $p_id, $qty, $unitPrice, $id);
+                    if ($stmt2->execute()) {
+                        $response['success'] = true;
+                        $response['message'] = 'Order updated successfully';
+                    } else {
+                        $response['error'] = 'Failed to update order detail: ' . $stmt2->error;
+                    }
+                } else {
+                    $response['error'] = 'Failed to update order: ' . $stmt->error;
+                }
+            }
             break;
 
         case 'delete':
-            $conn->begin_transaction();
-            $stmt = $conn->prepare("DELETE FROM PurchaseOrderDetail WHERE po_id=?");
-            $stmt->bind_param('i', $data['id']);
-            $stmt->execute();
-            $stmt->close();
-            $stmt = $conn->prepare("DELETE FROM PurchaseOrder WHERE po_id=?");
-            $stmt->bind_param('i', $data['id']);
-            $stmt->execute();
-            $stmt->close();
-            $conn->commit();
+            $id = intval($_POST['id']);
+            $sql = "DELETE FROM PurchaseOrderDetail WHERE po_id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param('i', $id);
+            if ($stmt->execute()) {
+                $sql2 = "DELETE FROM PurchaseOrder WHERE po_id = ?";
+                $stmt2 = $conn->prepare($sql2);
+                $stmt2->bind_param('i', $id);
+                if ($stmt2->execute()) {
+                    $response['success'] = true;
+                    $response['message'] = 'Order deleted successfully';
+                } else {
+                    $response['error'] = 'Failed to delete order: ' . $stmt2->error;
+                }
+            } else {
+                $response['error'] = 'Failed to delete order detail: ' . $stmt->error;
+            }
             break;
+
         default:
-            throw new Exception('Invalid action');
+            $response['error'] = 'Invalid action';
+            break;
     }
-
-    // fetch updated list
-    $result = $conn->query("SELECT po.po_id AS id, sup.sup_name AS supplier, sup.sup_id, emp.emp_name AS employee, emp.emp_id, p.p_name AS product, p.p_id, pod.qty, po.date, pod.price AS unitPrice FROM PurchaseOrder po JOIN Supplier sup ON po.sup_id=sup.sup_id JOIN Employee emp ON po.emp_id=emp.emp_id JOIN PurchaseOrderDetail pod ON pod.po_id=po.po_id JOIN Product p ON p.p_id=pod.p_id ORDER BY po.po_id DESC");
-    $orders = $result->fetch_all(MYSQLI_ASSOC);
-
-    echo json_encode(['success'=>true,'orders'=>$orders], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
-    $conn->rollback();
-    echo json_encode(['success'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
+} else {
+    $response['error'] = 'Invalid request method';
 }
+
+// Fetch updated orders (moved outside the switch statement for consistency)
+$stmt = $conn->prepare("SELECT po.po_id AS id, po.sup_id, po.emp_id, p.p_id, sup.sup_name AS supplier, emp.emp_name AS employee, p.p_name AS product, pod.qty, po.date, pod.price AS unitPrice FROM PurchaseOrder po JOIN Supplier sup ON po.sup_id=sup.sup_id JOIN Employee emp ON po.emp_id=emp.emp_id JOIN PurchaseOrderDetail pod ON pod.po_id=po.po_id JOIN Product p ON p.p_id=pod.p_id ORDER BY po.po_id DESC");
+$stmt->execute();
+$orders = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+$response['orders'] = $orders;
+
+echo json_encode($response, JSON_UNESCAPED_UNICODE);
 ?>

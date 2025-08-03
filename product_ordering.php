@@ -459,36 +459,31 @@ $stmt->close();
     // ຈັດການການສົ່ງແບບຟອມ (ເພີ່ມ/ແກ້ໄຂ)
     document.getElementById('orderForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const id = this.orderId.value;
-        const data = {
-            sup_id: parseInt(this.supplierId.value),
-            emp_id: parseInt(this.employeeId.value),
-            p_id: parseInt(this.productId.value),
-            qty: parseInt(this.orderQty.value),
-            date: this.orderDate.value,
-            unitPrice: parseFloat(this.unitPrice.value)
-        };
-        const payload = {
-            ...data,
-            action: id ? 'edit' : 'add',
-            id: id ? parseInt(id) : undefined
-        };
-        fetch('order_report.php', {
+
+        const formData = new FormData(this); // Use FormData
+        const id = formData.get('orderId');
+
+        formData.append('action', id ? 'edit' : 'add'); // Add action
+
+        fetch('purchase_order_api.php', { // Corrected URL
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+                body: formData // Send FormData
             })
-            .then(r => r.json()).then(res => {
-                if (res.success) {
-                    orders = res.orders;
+            .then(response => response.json()) // Parse the JSON response
+            .then(data => {
+                if (data.success) {
+                    orders = data.orders;
                     renderTable();
                     closeModal();
                     alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ.');
-                } else alert(res.error || 'ເກີດຂໍ້ຜິດພາດ.');
+                } else {
+                    alert(data.error || 'ເກີດຂໍ້ຜິດພາດ.');
+                }
             })
-            .catch(err => alert('ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ: ' + err.message));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກ: ' + error.message);
+            });
     });
 
     // ປິດ modal ເມື່ອກົດນອກພື້ນທີ່ modal
