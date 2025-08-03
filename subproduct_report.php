@@ -9,6 +9,9 @@ $sql = "SELECT
             s.sup_name,
             e.emp_name,
             p.p_name,
+            p.type,
+            p.shelf,
+            p.unit,
             pod.qty,
             pod.price,
             (pod.qty * pod.price) AS total_price,
@@ -139,14 +142,17 @@ function laoNumberFormat($value) {
     <table class="receipt-table">
         <thead>
             <tr>
-                <th>ເລກທີ່ໃບບິນ</th>
-                <th>ຊື່ຜູ້ສະໜອງ</th>
-                <th>ພະນັກງານ</th>
-                <th>ຊື່ສິນຄ້າ</th>
-                <th>ຈຳນວນ</th>
-                <th>ລາຄາຕໍ່ອັນ</th>
-                <th>ລາຄາລວມ</th>
-                <th>ວັນທີນຳເຂົ້າ</th>
+                    <th>ລ.ດ NO</th>
+                    <th>ຜູ້ສະໜອງ</th>
+                    <th>ພະນັກງານ</th>
+                    <th>ລາຍການ</th>
+                    <th>ປະເພດ</th>
+                    <th>ຊັ້ນວາງ</th>
+                    <th>ຫົວໜ່ວຍ</th>
+                    <th>ຈຳນວນ</th>
+                    <th>ລາຄາ</th>
+                    <th>ຈຳນວນທັງໝົດ</th>
+                    <th>ວັນທີນຳເຂົ້າ</th>
             </tr>
         </thead>
         <tbody>
@@ -161,6 +167,9 @@ function laoNumberFormat($value) {
                     <td class="text-left"><?php echo htmlspecialchars($import['sup_name'] ?? 'N/A'); ?></td>
                     <td class="text-left"><?php echo htmlspecialchars($import['emp_name'] ?? 'N/A'); ?></td>
                     <td class="text-left"><?php echo htmlspecialchars($import['p_name']); ?></td>
+                    <td><?php echo htmlspecialchars($import['type']); ?></td>
+                    <td><?php echo htmlspecialchars($import['shelf']); ?></td>
+                    <td><?php echo htmlspecialchars($import['unit']); ?></td>
                     <td><?php echo htmlspecialchars($import['qty']); ?></td>
                     <td><?php echo laoNumberFormat($import['price']); ?></td>
                     <td><?php echo laoNumberFormat($import['total_price']); ?></td>
@@ -170,14 +179,15 @@ function laoNumberFormat($value) {
                 endforeach;
             ?>
                 <tr>
-                    <td colspan="7" style="text-align:right;font-weight:bold;">ຍອດລວມທັງໝົດ</td>
+                    <td colspan="9" style="text-align:right;font-weight:bold;">ຍອດລວມທັງໝົດ</td>
                     <td style="font-weight:bold;"><?php echo laoNumberFormat($grandTotal); ?></td>
+                    <td></td>
                 </tr>
             <?php
             else: 
             ?>
                 <tr>
-                    <td colspan="8">ບໍ່ມີຂໍ້ມູນການນຳເຂົ້າສິນຄ້າ.</td>
+                    <td colspan="11">ບໍ່ມີຂໍ້ມູນການນຳເຂົ້າສິນຄ້າ.</td>
                 </tr>
             <?php endif; ?>
         </tbody>
@@ -193,7 +203,12 @@ function laoNumberFormat($value) {
         <div style="text-align:center;">
             <p style="text-align:right;font-style:italic;">ຂອບໃຈທີ່ໃຊ້ບໍລິການ</p>
         </div>
-    </div>
+
+
+
+
+
+</html></body></div>    </div>    </div>
 </div>
 
 </body>

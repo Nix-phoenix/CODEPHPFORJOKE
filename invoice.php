@@ -1,11 +1,6 @@
 <?php
 /* =============================================
  *  Invoice / Receipt Page
- *  ---------------------------------------------
- *  Expects ?id=<invoice_id> in the query string.
- *  Pulls invoice details + items from DB and renders a printable receipt.
- *  "Print" button is hidden when printing via @media print.
- *  ---------------------------------------------
  */
 include 'includes/auth.php';
 include 'db/connection.php';
@@ -17,19 +12,13 @@ if ($invoiceId === 0) {
 
 /* -------------------------------------------------
  *  Fetch invoice header & items from database schema defined in sql/create_database.sql
- *  -------------------------------------------------
- *  Sell            (s_id, c_id, emp_id, date)
- *  SellDetail      (sd_id, s_id, p_id, qty, price, total_price)
- *  Customer        (c_id, c_name, address, tel)
- *  Employee        (emp_id, emp_name)
- *  Product         (p_id, p_name)
- * --------------------------------------------------*/
+ */
 $invoiceSql = "SELECT s.s_id, s.date, c.c_name, c.tel AS customer_tel, c.address AS customer_address, e.emp_name AS cashier_name
                FROM Sell s
                LEFT JOIN Customer c ON s.c_id = c.c_id
                LEFT JOIN Employee e ON s.emp_id = e.emp_id
                WHERE s.s_id = ? LIMIT 1";
-$itemSql    = "SELECT sd.qty, sd.price, p.p_name
+$itemSql    = "SELECT sd.qty, sd.price, p.p_name, p.unit, p.type, p.shelf
                FROM SellDetail sd
                JOIN Product p ON sd.p_id = p.p_id
                WHERE sd.s_id = ?";
@@ -60,6 +49,7 @@ foreach ($items as $it) {
 ?>
 <!DOCTYPE html>
 <html lang="lo">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,9 +59,17 @@ foreach ($items as $it) {
     <style>
         /* Hide elements with class no-print during printing */
         @media print {
-            .no-print, .gpg-navbar { display: none !important; }
-            body { margin: 0; }
+
+            .no-print,
+            .gpg-navbar {
+                display: none !important;
+            }
+
+            body {
+                margin: 0;
+            }
         }
+
         .receipt-container {
             max-width: 800px;
             margin: 0 auto;
@@ -79,50 +77,77 @@ foreach ($items as $it) {
             padding: 10px 30px;
             font-family: 'Noto Sans Lao', sans-serif;
         }
+
         .receipt-title {
             text-align: center;
             font-size: 32px;
             font-weight: 700;
             margin-bottom: 4px;
         }
+
         .receipt-subtitle {
             text-align: center;
             font-size: 22px;
             margin: 0;
         }
+
         .receipt-header {
             display: flex;
             justify-content: space-between;
             margin-top: 10px;
         }
+
         .receipt-header h3 {
             font-size: 34px;
             font-weight: 700;
             margin: 0;
         }
-        .store-info p{margin:0;font-size:14px;}
-        .right-info{ text-align:right; font-size:14px;}
-        .dotted{display:inline-block;min-width:100px;border-bottom:1px dotted #000;margin-left:6px;}
-            font-size: 28px;
+
+        .store-info p {
             margin: 0;
+            font-size: 14px;
         }
-        .receipt-table, .receipt-table th, .receipt-table td {
+
+        .right-info {
+            text-align: right;
+            font-size: 14px;
+        }
+
+        .dotted {
+            display: inline-block;
+            min-width: 100px;
+            border-bottom: 1px dotted #000;
+            margin-left: 6px;
+        }
+
+        font-size: 28px;
+        margin: 0;
+        }
+
+        .receipt-table,
+        .receipt-table th,
+        .receipt-table td {
             border: 1px solid #000;
             border-collapse: collapse;
         }
+
         .receipt-table {
             width: 100%;
             margin-top: 16px;
         }
-        .receipt-table th, .receipt-table td {
+
+        .receipt-table th,
+        .receipt-table td {
             padding: 6px 4px;
             text-align: center;
         }
+
         .receipt-footer {
             margin-top: 24px;
             display: flex;
             justify-content: space-between;
         }
+
         .Print-btn {
             background: #4caf50;
             color: #fff;
@@ -146,71 +171,100 @@ foreach ($items as $it) {
         }
     </style>
 </head>
+
 <body>
-<?php include 'includes/navbar.php'; ?>
+    <?php include 'includes/navbar.php'; ?>
 
-<div class="receipt-container">
-<div class="container no-print" style="text-align:right;margin-top:20px;">
-    <button class="Print-btn" onclick="window.print();">ພິມໃບບິນ</button>
-</div>
-    <h2 class="receipt-title">ໃບຮັບເງິນ <br> Receipt</h2>
-
-    <div class="receipt-header">
-        <div class="store-info">
-            <h3>ຮ້ານ ຈິພິຈີ</h3>
-            <p style="font-weight:bold;">ສະຫນອງອຸປະປະກອນແລະທໍ່ນໍ້າປະປາທຸກຊະນິດ<br>
-            <p style="font-weight:bold; margin-left:50px;">ໂທ 020-58828288</p>
-            <p style="font-weight:bold;">WhatsApp 030-5656555<br>Facebook @gpqlaosstore</p>
+    <div class="receipt-container">
+        <div class="container no-print" style="text-align:right;margin-top:20px;">
+            <button class="Print-btn" onclick="window.print();">ພິມໃບບິນ</button>
         </div>
-        <div class="right-info">
-            <p style="font-weight:bold; margin-right:129px;">ທີ່ຢູ່ ບ້ານໂພນຕ້ອງ</p>
-            <p style="font-weight:bold;">ເມືອງ ຈັນທະບູລີ ແຂວງ ນະຄອນຫຼວງວຽງຈັນ</p>
-            <p>ເລກທີ:<span class="dotted"><?php echo $invoice['s_id']; ?></span></p>
-            <p>ວັນທີ:<span class="dotted"><?php echo date('d/m/Y', strtotime($invoice['date'])); ?></span></p>
+        <h2 class="receipt-title">ໃບຮັບເງິນ <br> Receipt</h2>
+
+        <div class="receipt-header">
+            <div class="store-info">
+                <h3>ຮ້ານ ຈິພິຈີ</h3>
+                <p style="font-weight:bold;">ສະຫນອງອຸປະປະກອນແລະທໍ່ນໍ້າປະປາທຸກຊະນິດ<br>
+                <p style="font-weight:bold; margin-left:50px;">ໂທ 020-58828288</p>
+                <p style="font-weight:bold;">WhatsApp 030-5656555<br>Facebook @gpqlaosstore</p>
+            </div>
+            <div class="right-info">
+                <p style="font-weight:bold; margin-right:129px;">ທີ່ຢູ່ ບ້ານໂພນຕ້ອງ</p>
+                <p style="font-weight:bold;">ເມືອງ ຈັນທະບູລີ ແຂວງ ນະຄອນຫຼວງວຽງຈັນ</p>
+                <p>ເລກທີ:<span class="dotted"><?php echo $invoice['s_id']; ?></span></p>
+                <p>ວັນທີ:<span class="dotted"><?php echo date('d/m/Y', strtotime($invoice['date'])); ?></span></p>
+            </div>
+        </div>
+
+        <p style="margin-top:12px;">ຊື່ລູກຄ້າ:
+            <?php echo htmlspecialchars($invoice['c_name'] ?? '-'); ?> &nbsp;&nbsp;ເບີໂທ:
+            <?php echo htmlspecialchars($invoice['customer_tel'] ?? '-'); ?> &nbsp;&nbsp;ທີ່ຢູ່:
+            <?php echo htmlspecialchars($invoice['customer_address'] ?? '-'); ?></p>
+
+        <table class="receipt-table">
+            <thead>
+                <tr>
+                    <th>ລ.ດ NO</th>
+                    <th>ລາຍການ Description</th>
+                    <th>ປະເພດ</th>
+                    <th>ໝວດສິນຄ້າ</th>
+                    <th>ຫົວໜ່ວຍ</th>
+                    <th>ຈຳນວນ Quantity</th>
+                    <th>ລາຄາ Price</th>
+                    <th>ຈຳນວນຮັບ Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($items as $index => $it): ?>
+                <tr>
+                    <td>
+                        <?php echo $index + 1; ?>
+                    </td>
+                    <td>
+                        <?php echo htmlspecialchars($it['p_name']); ?>
+                    </td>
+                    <td>
+                        <?php echo htmlspecialchars($it['type']); ?>
+                    </td>
+                    <td>
+                        <?php echo htmlspecialchars($it['shelf']); ?>
+                    </td>
+                    <td>
+                        <?php echo htmlspecialchars($it['unit']); ?>
+                    </td>
+                    <td>
+                        <?php echo $it['qty']; ?>
+                    </td>
+                    <td>
+                        <?php echo laoNumberFormat($it['price']); ?>
+                    </td>
+                    <td>
+                        <?php echo laoNumberFormat($it['qty'] * $it['price']); ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                <tr>
+                    <td colspan="7" style="text-align:right;font-weight:bold;">ລາຄາລວມ Total</td>
+                    <td>
+                        <?php echo laoNumberFormat($totalAmount); ?>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="receipt-footer">
+            <div style="text-align:center; font-weight:bold;">
+                <p>ຜູ້ຮັບງິນ<br>Cashier</p>
+            </div>
+            <div style="text-align:center; font-weight:bold;">
+                <p>ຜູ້ຈ່າຍງິນ<br>Payer</p>
+            </div>
+            <div style="text-align:center;">
+                <p style="text-align:right;font-style:italic;">ຂອບໃຈທີ່ໃຊ້ບໍລິການ</p>
+            </div>
         </div>
     </div>
-
-    <p style="margin-top:12px;">ຊື່ລູກຄ້າ: <?php echo htmlspecialchars($invoice['c_name'] ?? '-'); ?> &nbsp;&nbsp;ເບີໂທ: <?php echo htmlspecialchars($invoice['customer_tel'] ?? '-'); ?> &nbsp;&nbsp;ທີ່ຢູ່: <?php echo htmlspecialchars($invoice['customer_address'] ?? '-'); ?></p>
-
-    <table class="receipt-table">
-        <thead>
-            <tr>
-                <th>ລ.ດ NO</th>
-                <th>ລາຍການ Description</th>
-                <th>ຈຳນວນ Quantity</th>
-                <th>ລາຄາ Price</th>
-                <th>ຈຳນວນຮັບ Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($items as $index => $it): ?>
-            <tr>
-                <td><?php echo $index + 1; ?></td>
-                <td><?php echo htmlspecialchars($it['p_name']); ?></td>
-                <td><?php echo $it['qty']; ?></td>
-                <td><?php echo laoNumberFormat($it['price']); ?></td>
-                <td><?php echo laoNumberFormat($it['qty'] * $it['price']); ?></td>
-            </tr>
-            <?php endforeach; ?>
-            <tr>
-                <td colspan="4" style="text-align:right;font-weight:bold;">ລາຄາລວມ Total</td>
-                <td><?php echo laoNumberFormat($totalAmount); ?></td>
-            </tr>
-        </tbody>
-    </table>
-
-    <div class="receipt-footer">
-        <div style="text-align:center; font-weight:bold;">
-            <p>ຜູ້ຮັບງິນ<br>Cashier</p>
-        </div>
-        <div style="text-align:center; font-weight:bold;">
-            <p>ຜູ້ຈ່າຍງິນ<br>Payer</p>
-        </div>
-        <div style="text-align:center;">
-        <p style="text-align:right;font-style:italic;">ຂອບໃຈທີ່ໃຊ້ບໍລິການ</p>
-        </div>
-    </div>
-</div>
 
 </body>
+
 </html>
